@@ -16,7 +16,7 @@ DB_USER = os.environ.get("gen_user")
 DB_PASSWORD = os.environ.get("A-gcss6#w$FsWW")
 SHEET_ID = os.environ.get("1ZJzMWpMiN55e13Xad2wrrwX7I1zihOKLyELNCGLm37Q")
 
-CSV_URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv"
+CSV_URL = f"https://docs.google.com/spreadsheets/d/1ZJzMWpMiN55e13Xad2wrrwX7I1zihOKLyELNCGLm37Q/export?format=csv"
 
 def import_google_sheets_to_postgres():
     try:
