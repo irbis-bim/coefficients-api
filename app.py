@@ -10,13 +10,12 @@ from flask import Flask
 
 app = Flask(__name__)
 
-# Получаем параметры из переменных окружения
 DB_HOST = os.environ.get("DB_HOST")
 DB_NAME = os.environ.get("DB_NAME")
 DB_USER = os.environ.get("DB_USER")
 DB_PASSWORD = os.environ.get("DB_PASSWORD")
 SHEET_ID = os.environ.get("SHEET_ID")
-SHEET_GID = os.environ.get("SHEET_GID")  # добавь новый env-параметр для листа test_2
+SHEET_GID = os.environ.get("SHEET_GID")  # ID листа test_2
 
 CSV_URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&gid={SHEET_GID}"
 
@@ -44,8 +43,27 @@ def import_google_sheets_to_postgres():
 
         for i, row in enumerate(records):
             try:
-                report_date = datetime.strptime(row.get('report_date', ''), '%Y-%m-%d').date() if row.get('report_date') else None
+                # Преобразование даты в формат YYYY-MM-DD
+                date_str = row.get('report_date')
+                report_date = None
+                if date_str:
+                    fixed_date_str = date_str.replace('.', '-')
+                    try:
+                        report_date = datetime.strptime(fixed_date_str, '%Y-%m-%d').date()
+                    except ValueError:
+                        try:
+                            report_date = datetime.strptime(fixed_date_str, '%Y-%d-%m').date()
+                        except ValueError:
+                            print(f"Error parsing date: '{date_str}'")
+
+                # Преобразование коэффициента из строки '1,00' в float 1.00
+                k_str = row.get('k')
+                coefficient = None
+                if k_str:
+                    coefficient = float(k_str.replace(',', '.'))
+
                 last_updated = datetime.now()
+
                 cur.execute("""
                     INSERT INTO model_coefficients (project_code, project_part, section, report_date, coefficient, last_updated)
                     VALUES (%s, %s, %s, %s, %s, %s)
@@ -59,7 +77,7 @@ def import_google_sheets_to_postgres():
                     row.get('project_part'),
                     row.get('section'),
                     report_date,
-                    float(row.get('coefficient')) if row.get('coefficient') else None,
+                    coefficient,
                     last_updated
                 ))
                 print(f"Inserted row {i+1}: {row.get('project_code')}, {row.get('report_date')}")
@@ -77,7 +95,7 @@ def import_google_sheets_to_postgres():
 def background_job():
     while True:
         import_google_sheets_to_postgres()
-        time.sleep(3600)  # Обновлять каждый час
+        time.sleep(3600)  # обновление каждый час
 
 @app.route("/")
 def index():
@@ -85,7 +103,7 @@ def index():
 
 if __name__ == '__main__':
     print("=== Запуск Flask-сервиса и фонового потока синхронизации ===")
-    import_google_sheets_to_postgres()
+    import_google_sheets_to_postgres()  # запуск один раз при старте
     thread = threading.Thread(target=background_job, daemon=True)
     thread.start()
     port = int(os.environ.get("PORT", 10000))
