@@ -1,0 +1,3 @@
+gspread
+psycopg2-binary
+schedule
