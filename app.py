@@ -1,36 +1,34 @@
+import os
+import threading
+import time
+from datetime import datetime
 import gspread
 import psycopg2
-from datetime import datetime
-import schedule
-import time
+from flask import Flask
 
-# Конфигурация подключения к БД (через переменные окружения на Render лучше)
-DB_HOST = "92.255.78.188"
-DB_NAME = "default_db"
-DB_USER = "gen_user"
-DB_PASSWORD = "A-gcss6#w$FsWW"
+app = Flask(__name__)
 
-# Ссылка на публичную Google Sheets
-SHEET_URL = "https://docs.google.com/spreadsheets/d/1ZJzMWpMiN55e13Xad2wrrwX7I1zihOKLyELNCGLm37Q/edit?usp=sharing"
+DB_HOST = os.environ.get("92.255.78.188")
+DB_NAME = os.environ.get("default_db")
+DB_USER = os.environ.get("gen_user")
+DB_PASSWORD = os.environ.get("A-gcss6#w$FsWW")
+SHEET_URL = os.environ.get("https://docs.google.com/spreadsheets/d/1ZJzMWpMiN55e13Xad2wrrwX7I1zihOKLyELNCGLm37Q/edit?gid=1878287524#gid=1878287524")
 
 def import_google_sheets_to_postgres():
     try:
-        # Подключение к Google Sheets
         gc = gspread.public()
         worksheet = gc.open_by_url(SHEET_URL).sheet1
         records = worksheet.get_all_records()
 
-        # Подключение к PostgreSQL
         conn = psycopg2.connect(
             host=DB_HOST,
             database=DB_NAME,
             user=DB_USER,
-            password=DB_PASSWORD
+            password=DB_PASSWORD,
         )
         cur = conn.cursor()
 
         for row in records:
-            # Преобразование даты
             report_date = datetime.strptime(row['report_date'], '%Y-%m-%d').date() if row['report_date'] else None
             last_updated = datetime.now()
 
@@ -62,12 +60,17 @@ def import_google_sheets_to_postgres():
     except Exception as e:
         print(f"Error during import: {e}")
 
-# Фоновое обновление каждые 1 час
-schedule.every(1).hours.do(import_google_sheets_to_postgres)
-
-if __name__ == "__main__":
-    print("Starting background Google Sheets to PostgreSQL sync...")
-    import_google_sheets_to_postgres()  # Первый запуск сразу
+def background_job():
     while True:
-        schedule.run_pending()
-        time.sleep(60)
+        import_google_sheets_to_postgres()
+        time.sleep(3600)  # Обновлять каждый час
+
+@app.route("/")
+def index():
+    return "Google Sheets to PostgreSQL sync service is running."
+
+if __name__ == '__main__':
+    thread = threading.Thread(target=background_job, daemon=True)
+    thread.start()
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host='0.0.0.0', port=port)
