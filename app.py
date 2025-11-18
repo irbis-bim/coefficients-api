@@ -16,7 +16,6 @@ DB_USER = os.environ.get("DB_USER")
 DB_PASSWORD = os.environ.get("DB_PASSWORD")
 SHEET_ID = os.environ.get("SHEET_ID")
 
-
 CSV_URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv"
 
 def import_google_sheets_to_postgres():
@@ -27,6 +26,10 @@ def import_google_sheets_to_postgres():
         reader = csv.DictReader(f)
         records = list(reader)
 
+        print(f"Loaded {len(records)} records from Google Sheets")
+        if len(records) > 0:
+            print(f"First record sample: {records[0]}")
+
         conn = psycopg2.connect(
             host=DB_HOST,
             database=DB_NAME,
@@ -36,22 +39,18 @@ def import_google_sheets_to_postgres():
         cur = conn.cursor()
 
         for row in records:
-            # Преобразование данных из CSV
             report_date = datetime.strptime(row['report_date'], '%Y-%m-%d').date() if row.get('report_date') else None
             last_updated = datetime.now()
 
             cur.execute("""
-                INSERT INTO model_coefficients (id, project_code, project_part, section, report_date, coefficient, last_updated)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
-                ON CONFLICT (id) DO UPDATE SET
-                  project_code = EXCLUDED.project_code,
+                INSERT INTO model_coefficients (project_code, project_part, section, report_date, coefficient, last_updated)
+                VALUES (%s, %s, %s, %s, %s, %s)
+                ON CONFLICT (project_code, report_date) DO UPDATE SET
                   project_part = EXCLUDED.project_part,
                   section = EXCLUDED.section,
-                  report_date = EXCLUDED.report_date,
                   coefficient = EXCLUDED.coefficient,
                   last_updated = EXCLUDED.last_updated;
             """, (
-                int(row['id']),
                 row['project_code'],
                 row.get('project_part'),
                 row.get('section'),
@@ -71,7 +70,7 @@ def import_google_sheets_to_postgres():
 def background_job():
     while True:
         import_google_sheets_to_postgres()
-        time.sleep(3600)  # Обновлять каждый час
+        time.sleep(3600)
 
 @app.route("/")
 def index():
