@@ -25,7 +25,7 @@ def import_google_sheets_to_postgres():
     try:
         response = requests.get(CSV_URL)
         response.raise_for_status()
-        f = io.StringIO(response.text)
+        f = io.StringIO(response.content.decode('utf-8'))
         reader = csv.DictReader(f)
         records = list(reader)
         print(f"Loaded {len(records)} records from Google Sheets")
