@@ -2,7 +2,9 @@ import os
 import threading
 import time
 from datetime import datetime
-import gspread
+import requests
+import csv
+import io
 import psycopg2
 from flask import Flask
 
@@ -14,11 +16,15 @@ DB_USER = os.environ.get("gen_user")
 DB_PASSWORD = os.environ.get("A-gcss6#w$FsWW")
 SHEET_URL = os.environ.get("https://docs.google.com/spreadsheets/d/1ZJzMWpMiN55e13Xad2wrrwX7I1zihOKLyELNCGLm37Q/edit?gid=1878287524#gid=1878287524")
 
+CSV_URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv"
+
 def import_google_sheets_to_postgres():
     try:
-        gc = gspread.public()
-        worksheet = gc.open_by_url(SHEET_URL).sheet1
-        records = worksheet.get_all_records()
+        response = requests.get(CSV_URL)
+        response.raise_for_status()
+        f = io.StringIO(response.text)
+        reader = csv.DictReader(f)
+        records = list(reader)
 
         conn = psycopg2.connect(
             host=DB_HOST,
@@ -29,7 +35,8 @@ def import_google_sheets_to_postgres():
         cur = conn.cursor()
 
         for row in records:
-            report_date = datetime.strptime(row['report_date'], '%Y-%m-%d').date() if row['report_date'] else None
+            # Преобразование данных из CSV
+            report_date = datetime.strptime(row['report_date'], '%Y-%m-%d').date() if row.get('report_date') else None
             last_updated = datetime.now()
 
             cur.execute("""
@@ -43,12 +50,12 @@ def import_google_sheets_to_postgres():
                   coefficient = EXCLUDED.coefficient,
                   last_updated = EXCLUDED.last_updated;
             """, (
-                row['id'],
+                int(row['id']),
                 row['project_code'],
                 row.get('project_part'),
                 row.get('section'),
                 report_date,
-                row['coefficient'],
+                float(row['coefficient']),
                 last_updated
             ))
 
