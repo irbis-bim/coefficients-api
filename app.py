@@ -43,7 +43,6 @@ def import_google_sheets_to_postgres():
 
         for i, row in enumerate(records):
             try:
-                # Преобразование даты в формат YYYY-MM-DD
                 date_str = row.get('report_date')
                 report_date = None
                 if date_str:
@@ -56,7 +55,6 @@ def import_google_sheets_to_postgres():
                         except ValueError:
                             print(f"Error parsing date: '{date_str}'")
 
-                # Преобразование коэффициента из строки '1,00' в float 1.00
                 k_str = row.get('k')
                 coefficient = None
                 if k_str:
@@ -95,15 +93,23 @@ def import_google_sheets_to_postgres():
 def background_job():
     while True:
         import_google_sheets_to_postgres()
-        time.sleep(3600)  # обновление каждый час
+        time.sleep(7 * 24 * 3600)  # Обновление раз в неделю
 
 @app.route("/")
 def index():
     return "Google Sheets to PostgreSQL sync service is running."
 
+@app.route("/update-now", methods=["GET"])
+def update_now():
+    try:
+        import_google_sheets_to_postgres()
+        return "Данные успешно обновлены!", 200
+    except Exception as e:
+        return f"Ошибка обновления данных: {e}", 500
+
 if __name__ == '__main__':
     print("=== Запуск Flask-сервиса и фонового потока синхронизации ===")
-    import_google_sheets_to_postgres()  # запуск один раз при старте
+    import_google_sheets_to_postgres()  # первый запуск сразу
     thread = threading.Thread(target=background_job, daemon=True)
     thread.start()
     port = int(os.environ.get("PORT", 10000))
