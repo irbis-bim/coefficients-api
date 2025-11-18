@@ -10,13 +10,14 @@ from flask import Flask
 
 app = Flask(__name__)
 
-DB_HOST = os.environ.get("92.255.78.188")
-DB_NAME = os.environ.get("default_db")
-DB_USER = os.environ.get("gen_user")
-DB_PASSWORD = os.environ.get("A-gcss6#w$FsWW")
-SHEET_ID = os.environ.get("1ZJzMWpMiN55e13Xad2wrrwX7I1zihOKLyELNCGLm37Q")
+DB_HOST = os.environ.get("DB_HOST")
+DB_NAME = os.environ.get("DB_NAME")
+DB_USER = os.environ.get("DB_USER")
+DB_PASSWORD = os.environ.get("DB_PASSWORD")
+SHEET_ID = os.environ.get("SHEET_ID")
 
-CSV_URL = f"https://docs.google.com/spreadsheets/d/1ZJzMWpMiN55e13Xad2wrrwX7I1zihOKLyELNCGLm37Q/export?format=csv"
+
+CSV_URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv"
 
 def import_google_sheets_to_postgres():
     try:
