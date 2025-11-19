@@ -48,10 +48,10 @@ def import_google_sheets_to_postgres():
                 if date_str:
                     fixed_date_str = date_str.replace('.', '-')
                     try:
-                        report_date = datetime.strptime(fixed_date_str, '%Y-%m-%d').date()
+                        report_date = datetime.strptime(fixed_date_str, '%Y.%m.%d').date()
                     except ValueError:
                         try:
-                            report_date = datetime.strptime(fixed_date_str, '%Y-%d-%m').date()
+                            report_date = datetime.strptime(fixed_date_str, '%Y.%d.%m').date()
                         except ValueError:
                             print(f"Error parsing date: '{date_str}'")
 
